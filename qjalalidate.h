@@ -24,14 +24,14 @@ private:
 
 public:
     QJalaliDate() : jd(nullJd()) { }
-    //QJalaliDate(const QDate &date) : jd(nullJd()) { }
+    QJalaliDate(const QDate &date);
     QJalaliDate(int year, int month, int day);
 
     static QJalaliDate currentDate();
-    static QJalaliDate fromGregorianDay(qint64 jd);
     static QJalaliDate fromGregorian(const QDate &gdate);
     static QJalaliDate fromGregorian(int year, int month, int day);
     static QDate toGregorian(const QJalaliDate &jd);
+    static QDate toGregorian(int year, int month, int day);
     static QJalaliDate fromString(const QString &string, Qt::DateFormat format = Qt::TextDate);
     static QJalaliDate fromString(const QString &string, const QString &format);
     static bool isLeapYear(int year);
@@ -50,7 +50,9 @@ public:
     qint64 daysTo(const QJalaliDate &d) const;
     qint64 daysTo(const QDate &d) const;
     void getDate(int *year, int *month, int *day) const;
+    bool setDateFromGregorian(int year, int month, int day);
     bool setDate(int year, int month, int day);
+    QDate toGregorian() const;
     QString	toString(const QString &format) const;
     QString	toString(Qt::DateFormat format = Qt::TextDate) const;
     int	weekNumber(int *yearNumber = Q_NULLPTR) const;

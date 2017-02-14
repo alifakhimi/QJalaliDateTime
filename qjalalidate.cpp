@@ -1,5 +1,10 @@
 #include "qjalalidate.h"
 
+QJalaliDate::QJalaliDate(const QDate &date) : jd(nullJd())
+{
+    setDateFromGregorian(date.year(), date.month(), date.day());
+}
+
 QJalaliDate::QJalaliDate(int year, int month, int day) : jd(nullJd())
 {
     setDate(year, month, day);
@@ -14,12 +19,80 @@ QJalaliDate QJalaliDate::currentDate()
     return d;
 }
 
-QJalaliDate QJalaliDate::fromGregorianDay(qint64 jd)
-{
-}
-
 QDate QJalaliDate::toGregorian(const QJalaliDate &jd)
 {
+    return toGregorian(jd.year(), jd.month(), jd.day());
+}
+
+QDate QJalaliDate::toGregorian(int year, int month, int day)
+{
+    int miladiYear, marchDayDiff, dayCount;
+
+    //set default value
+    int miladiDate[]      =   { 1, 1, 1 };
+    char farvardin1st[]   =   { 1, 1, 1 };
+    char miladiMonth[]    =   { 30, 31, 30, 31, 31, 30, 31, 30, 31, 31, 28, 31 };
+
+    miladiYear = year + 621;
+
+    //Detemining the Farvardin the First
+    if (QDate::isLeapYear(miladiYear)){
+        //this is a Miladi leap year so Shamsi is leap too so the 1st of Farvardin is March 20 (3/20)
+        farvardin1st[1] = 3; // change default values
+        farvardin1st[2] = 20;
+        marchDayDiff = 12;
+    } else {
+        //this is not a Miladi leap year so Shamsi is not leap too so the 1st of Farvardin is March 21 (3/21)
+        farvardin1st[1] = 3;
+        farvardin1st[2] = 21;
+        marchDayDiff = 11;
+    }
+
+    if (QDate::isLeapYear(miladiYear + 1))
+        miladiMonth[10] = miladiMonth[10] + 1; //Adding one day to Feb
+
+    //Calculate the day count for input shamsi date from 1st Farvadin
+    if (month >= 1 && month <= 6)
+        dayCount = ((month - 1) * 31) + day;
+    else
+        dayCount = (6 * 31) + ((month - 7) * 30) + day;
+
+    //Finding the correspond miladi month and day
+    int remainDay;
+    if (dayCount <= marchDayDiff) {
+        //So we are in 20 (for leap year or 21 for none leap year) to 31 march
+        miladiDate[2] = dayCount + (31 - marchDayDiff);
+        miladiDate[1] = 3;
+        miladiDate[0] = miladiYear;
+
+    }
+    else
+        remainDay = dayCount - marchDayDiff;
+
+    int i;
+    i = 0; // starting from April
+
+    while (remainDay > miladiMonth[i]) {
+        remainDay = remainDay - miladiMonth[i];
+        i = i + 1;
+    }
+
+    miladiDate[2] = remainDay;
+
+    if (i > 8) {
+        // We are in the next Miladi Year
+        miladiDate[1] = i - 8;
+        miladiDate[0] = miladiYear + 1;
+    } else {
+        miladiDate[1] = i + 4;
+        miladiDate[0] = miladiYear;
+    }
+
+    int y = miladiDate[0];
+    int m = miladiDate[1];
+    int d = miladiDate[2];
+
+    return QDate(y, m, d);
 }
 
 QJalaliDate QJalaliDate::fromGregorian(const QDate &gdate)
@@ -166,12 +239,45 @@ void QJalaliDate::getDate(int *year, int *month, int *day) const
 
 bool QJalaliDate::setDate(int year, int month, int day)
 {
+    const QDate d = toGregorian(year, month, day);
+    return setDateFromGregorian(d.year(), d.month(), d.day());
+}
+
+QDate QJalaliDate::toGregorian() const
+{
+    return toGregorian(this->year(), this->month(), this->day());
+}
+
+bool QJalaliDate::setDateFromGregorian(int year, int month, int day)
+{
     if (isValid(year, month, day))
         jd = jalaliDayFromDate(year, month, day);
     else
         jd = nullJd();
 
     return isValid();
+}
+
+qint64 QJalaliDate::jalaliDayFromDate(int year, int month, int day)
+{
+    year = year - 1600;
+    month = month - 1;
+    day = day - 1;
+
+    int gDayNo = 365 * year + div(year + 3, 4).quot - div(year + 99, 100).quot + div(year + 399, 400).quot;
+
+    for(int i=0; i < month; ++i)
+        gDayNo += gregorianDaysInMonth[i];
+
+    if(month > 1 && ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)))
+        //leap and after Feb
+        gDayNo++;
+
+    gDayNo += day;
+
+    qint64 jDayNo = gDayNo - 79;
+
+    return jDayNo;
 }
 
 QString QJalaliDate::toString(const QString &format) const
@@ -221,26 +327,4 @@ int QJalaliDate::weekNumber(int *yearNumber) const
 QString QJalaliDate::getName() const
 {
     return m_name;
-}
-
-qint64 QJalaliDate::jalaliDayFromDate(int year, int month, int day)
-{
-    year = year - 1600;
-    month = month - 1;
-    day = day - 1;
-
-    int gDayNo = 365 * year + div(year + 3, 4).quot - div(year + 99, 100).quot + div(year + 399, 400).quot;
-
-    for(int i=0; i < month; ++i)
-        gDayNo += gregorianDaysInMonth[i];
-
-    if(month > 1 && ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)))
-        //leap and after Feb
-        gDayNo++;
-
-    gDayNo += day;
-
-    qint64 jDayNo = gDayNo - 79;
-
-    return jDayNo;
 }
